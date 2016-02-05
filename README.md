@@ -5,7 +5,8 @@ or by using FragmentStatePagerAdapter with at least 4 Fragment.
 
 # About this code
 
-You can real all about this code and why I wrote it on my medium blog. 
+You can read all about this code and why I wrote it on my medium blog.
+[Looping/infinite ViewPager with ViewPagerIndicator](https://medium.com/@ali.muzaffar/looping-infinite-viewpager-with-page-indicator-in-android-ce741f25702a)
 
 Note: If you're willing to hack it a bit, you can probably use one or two fragments as well. 
 
@@ -27,4 +28,5 @@ with hardcoding getRealCount() to 2 or 3 and creating duplicates of all the frag
 The demo demostrates how one can create their own Page indictors.
 
 ![Looping with Custom Page Indicator](http://i.giphy.com/13g5uRubiIcL5K.gif)
+
 

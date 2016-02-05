@@ -8,7 +8,7 @@ import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.view.ViewGroup;
 
-import com.viewpagerindicator.LoopingLinePageIndicator;
+import com.viewpagerindicator.LoopingCirclePageIndicator;
 import com.viewpagerindicator.LoopingPagerAdapter;
 
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ public class ThirdApproachActivity extends AppCompatActivity {
         //this puts the initial page in the middle of the ViewPager
         //So that we can scroll in both directions.
         mPager.setCurrentItem(fragments.size());
-        LoopingLinePageIndicator circlePageIndicator = new LoopingLinePageIndicator(this);
+        LoopingCirclePageIndicator circlePageIndicator = new LoopingCirclePageIndicator(this);
         circlePageIndicator.setViewPager(mPager);
         mFrameLayout.addView(circlePageIndicator);
 
