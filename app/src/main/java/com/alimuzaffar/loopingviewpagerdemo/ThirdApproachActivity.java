@@ -7,10 +7,9 @@ import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 
-import com.viewpagerindicator.LoopingCirclePageIndicator;
-import com.viewpagerindicator.LoopingPager;
+import com.viewpagerindicator.LoopingLinePageIndicator;
+import com.viewpagerindicator.LoopingPagerAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +18,7 @@ public class ThirdApproachActivity extends AppCompatActivity {
 
     ViewPager mPager;
     ViewGroup mFrameLayout;
-    CustomPagerAdapter2 mAdapter;
+    CustomPagerAdapterAdapter2 mAdapter;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,22 +30,22 @@ public class ThirdApproachActivity extends AppCompatActivity {
         fragments.add(ContentFragment.newInstance("World"));
         fragments.add(ContentFragment.newInstance("!!!!!"));
         fragments.add(ContentFragment.newInstance("~~~~"));
-        mAdapter = new CustomPagerAdapter2(getSupportFragmentManager(), fragments);
+        mAdapter = new CustomPagerAdapterAdapter2(getSupportFragmentManager(), fragments);
         mPager.setAdapter(mAdapter);
         //this puts the initial page in the middle of the ViewPager
         //So that we can scroll in both directions.
         mPager.setCurrentItem(fragments.size());
-        LoopingCirclePageIndicator circlePageIndicator = new LoopingCirclePageIndicator(this);
+        LoopingLinePageIndicator circlePageIndicator = new LoopingLinePageIndicator(this);
         circlePageIndicator.setViewPager(mPager);
         mFrameLayout.addView(circlePageIndicator);
 
 
     }
 
-    static class CustomPagerAdapter2 extends FragmentStatePagerAdapter implements LoopingPager {
+    static class CustomPagerAdapterAdapter2 extends FragmentStatePagerAdapter implements LoopingPagerAdapter {
 
         List<Fragment> mFrags = new ArrayList<>();
-        public CustomPagerAdapter2(FragmentManager fm, List<Fragment> frags) {
+        public CustomPagerAdapterAdapter2(FragmentManager fm, List<Fragment> frags) {
             super(fm);
             mFrags = frags;
         }

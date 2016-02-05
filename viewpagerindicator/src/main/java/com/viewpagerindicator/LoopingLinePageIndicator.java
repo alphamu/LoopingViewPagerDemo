@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011 Patrik Akerfeldt
- * Copyright (C) 2011 Jake Wharton
+ * Copyright (C) 2012 Jake Wharton
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@ import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Paint.Style;
 import android.graphics.drawable.Drawable;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -29,83 +27,68 @@ import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.ViewConfigurationCompat;
 import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
+import android.util.FloatMath;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 
-import static android.graphics.Paint.ANTI_ALIAS_FLAG;
-import static android.widget.LinearLayout.HORIZONTAL;
-import static android.widget.LinearLayout.VERTICAL;
-
 /**
- * Draws circles (one for each view). The current view position is filled and
- * others are only stroked.
+ * Draws a line for each page. The current page line is colored differently
+ * than the unselected page lines.
  */
-public class LoopingCirclePageIndicator extends View implements PageIndicator {
+public class LoopingLinePageIndicator extends View implements PageIndicator {
     private static final int INVALID_POINTER = -1;
 
-    private float mRadius;
-    private final Paint mPaintPageFill = new Paint(ANTI_ALIAS_FLAG);
-    private final Paint mPaintStroke = new Paint(ANTI_ALIAS_FLAG);
-    private final Paint mPaintFill = new Paint(ANTI_ALIAS_FLAG);
+    private final Paint mPaintUnselected = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mPaintSelected = new Paint(Paint.ANTI_ALIAS_FLAG);
     private ViewPager mViewPager;
     private ViewPager.OnPageChangeListener mListener;
     private int mCurrentPage;
-    private int mSnapPage;
-    private float mPageOffset;
-    private int mScrollState;
-    private int mOrientation;
     private boolean mCentered;
-    private boolean mSnap;
+    private float mLineWidth;
+    private float mGapWidth;
 
     private int mTouchSlop;
     private float mLastMotionX = -1;
     private int mActivePointerId = INVALID_POINTER;
     private boolean mIsDragging;
 
-    private float mExtraSpacing;
 
-    public LoopingCirclePageIndicator(Context context) {
+    public LoopingLinePageIndicator(Context context) {
         this(context, null);
     }
 
-    public LoopingCirclePageIndicator(Context context, AttributeSet attrs) {
-        this(context, attrs, R.attr.vpiCirclePageIndicatorStyle);
+    public LoopingLinePageIndicator(Context context, AttributeSet attrs) {
+        this(context, attrs, R.attr.vpiLinePageIndicatorStyle);
     }
 
-    public LoopingCirclePageIndicator(Context context, AttributeSet attrs, int defStyle) {
+    public LoopingLinePageIndicator(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         if (isInEditMode()) return;
 
-        //Load defaults from resources
         final Resources res = getResources();
-        final int defaultPageColor = res.getColor(R.color.default_circle_indicator_page_color);
-        final int defaultFillColor = res.getColor(R.color.default_circle_indicator_fill_color);
-        final int defaultOrientation = res.getInteger(R.integer.default_circle_indicator_orientation);
-        final int defaultStrokeColor = res.getColor(R.color.default_circle_indicator_stroke_color);
-        final float defaultStrokeWidth = res.getDimension(R.dimen.default_circle_indicator_stroke_width);
-        final float defaultRadius = res.getDimension(R.dimen.default_circle_indicator_radius);
-        final boolean defaultCentered = res.getBoolean(R.bool.default_circle_indicator_centered);
-        final boolean defaultSnap = res.getBoolean(R.bool.default_circle_indicator_snap);
+
+        //Load defaults from resources
+        final int defaultSelectedColor = res.getColor(R.color.default_line_indicator_selected_color);
+        final int defaultUnselectedColor = res.getColor(R.color.default_line_indicator_unselected_color);
+        final float defaultLineWidth = res.getDimension(R.dimen.default_line_indicator_line_width);
+        final float defaultGapWidth = res.getDimension(R.dimen.default_line_indicator_gap_width);
+        final float defaultStrokeWidth = res.getDimension(R.dimen.default_line_indicator_stroke_width);
+        final boolean defaultCentered = res.getBoolean(R.bool.default_line_indicator_centered);
 
         //Retrieve styles attributes
-        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CirclePageIndicator, defStyle, 0);
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.LinePageIndicator, defStyle, 0);
 
-        mCentered = a.getBoolean(R.styleable.CirclePageIndicator_centered, defaultCentered);
-        mOrientation = a.getInt(R.styleable.CirclePageIndicator_android_orientation, defaultOrientation);
-        mPaintPageFill.setStyle(Style.FILL);
-        mPaintPageFill.setColor(a.getColor(R.styleable.CirclePageIndicator_pageColor, defaultPageColor));
-        mPaintStroke.setStyle(Style.STROKE);
-        mPaintStroke.setColor(a.getColor(R.styleable.CirclePageIndicator_strokeColor, defaultStrokeColor));
-        mPaintStroke.setStrokeWidth(a.getDimension(R.styleable.CirclePageIndicator_strokeWidth, defaultStrokeWidth));
-        mPaintFill.setStyle(Style.FILL);
-        mPaintFill.setColor(a.getColor(R.styleable.CirclePageIndicator_fillColor, defaultFillColor));
-        mRadius = a.getDimension(R.styleable.CirclePageIndicator_radius, defaultRadius);
-        mSnap = a.getBoolean(R.styleable.CirclePageIndicator_snap, defaultSnap);
+        mCentered = a.getBoolean(R.styleable.LinePageIndicator_centered, defaultCentered);
+        mLineWidth = a.getDimension(R.styleable.LinePageIndicator_lineWidth, defaultLineWidth);
+        mGapWidth = a.getDimension(R.styleable.LinePageIndicator_gapWidth, defaultGapWidth);
+        setStrokeWidth(a.getDimension(R.styleable.LinePageIndicator_strokeWidth, defaultStrokeWidth));
+        mPaintUnselected.setColor(a.getColor(R.styleable.LinePageIndicator_unselectedColor, defaultUnselectedColor));
+        mPaintSelected.setColor(a.getColor(R.styleable.LinePageIndicator_selectedColor, defaultSelectedColor));
 
-        Drawable background = a.getDrawable(R.styleable.CirclePageIndicator_android_background);
+        Drawable background = a.getDrawable(R.styleable.LinePageIndicator_android_background);
         if (background != null) {
-            setBackgroundDrawable(background);
+          setBackgroundDrawable(background);
         }
 
         a.recycle();
@@ -114,9 +97,6 @@ public class LoopingCirclePageIndicator extends View implements PageIndicator {
         mTouchSlop = ViewConfigurationCompat.getScaledPagingTouchSlop(configuration);
     }
 
-    public void setExtraSpacing(float extraSpacing) {
-        mExtraSpacing = extraSpacing;
-    }
 
     public void setCentered(boolean centered) {
         mCentered = centered;
@@ -127,75 +107,50 @@ public class LoopingCirclePageIndicator extends View implements PageIndicator {
         return mCentered;
     }
 
-    public void setPageColor(int pageColor) {
-        mPaintPageFill.setColor(pageColor);
+    public void setUnselectedColor(int unselectedColor) {
+        mPaintUnselected.setColor(unselectedColor);
         invalidate();
     }
 
-    public int getPageColor() {
-        return mPaintPageFill.getColor();
+    public int getUnselectedColor() {
+        return mPaintUnselected.getColor();
     }
 
-    public void setFillColor(int fillColor) {
-        mPaintFill.setColor(fillColor);
+    public void setSelectedColor(int selectedColor) {
+        mPaintSelected.setColor(selectedColor);
         invalidate();
     }
 
-    public int getFillColor() {
-        return mPaintFill.getColor();
+    public int getSelectedColor() {
+        return mPaintSelected.getColor();
     }
 
-    public void setOrientation(int orientation) {
-        switch (orientation) {
-            case HORIZONTAL:
-            case VERTICAL:
-                mOrientation = orientation;
-                requestLayout();
-                break;
-
-            default:
-                throw new IllegalArgumentException("Orientation must be either HORIZONTAL or VERTICAL.");
-        }
-    }
-
-    public int getOrientation() {
-        return mOrientation;
-    }
-
-    public void setStrokeColor(int strokeColor) {
-        mPaintStroke.setColor(strokeColor);
+    public void setLineWidth(float lineWidth) {
+        mLineWidth = lineWidth;
         invalidate();
     }
 
-    public int getStrokeColor() {
-        return mPaintStroke.getColor();
+    public float getLineWidth() {
+        return mLineWidth;
     }
 
-    public void setStrokeWidth(float strokeWidth) {
-        mPaintStroke.setStrokeWidth(strokeWidth);
+    public void setStrokeWidth(float lineHeight) {
+        mPaintSelected.setStrokeWidth(lineHeight);
+        mPaintUnselected.setStrokeWidth(lineHeight);
         invalidate();
     }
 
     public float getStrokeWidth() {
-        return mPaintStroke.getStrokeWidth();
+        return mPaintSelected.getStrokeWidth();
     }
 
-    public void setRadius(float radius) {
-        mRadius = radius;
+    public void setGapWidth(float gapWidth) {
+        mGapWidth = gapWidth;
         invalidate();
     }
 
-    public float getRadius() {
-        return mRadius;
-    }
-
-    public void setSnap(boolean snap) {
-        mSnap = snap;
-        invalidate();
-    }
-
-    public boolean isSnap() {
-        return mSnap;
+    public float getGapWidth() {
+        return mGapWidth;
     }
 
     @Override
@@ -215,80 +170,31 @@ public class LoopingCirclePageIndicator extends View implements PageIndicator {
             return;
         }
 
-        int longSize;
-        int longPaddingBefore;
-        int longPaddingAfter;
-        int shortPaddingBefore;
-        if (mOrientation == HORIZONTAL) {
-            longSize = getWidth();
-            longPaddingBefore = getPaddingLeft();
-            longPaddingAfter = getPaddingRight();
-            shortPaddingBefore = getPaddingTop();
-        } else {
-            longSize = getHeight();
-            longPaddingBefore = getPaddingTop();
-            longPaddingAfter = getPaddingBottom();
-            shortPaddingBefore = getPaddingLeft();
-        }
+        final float lineWidthAndGap = mLineWidth + mGapWidth;
+        final float indicatorWidth = (count * lineWidthAndGap) - mGapWidth;
+        final float paddingTop = getPaddingTop();
+        final float paddingLeft = getPaddingLeft();
+        final float paddingRight = getPaddingRight();
 
-        final float threeRadius = mRadius * 3 + mExtraSpacing;
-        final float shortOffset = shortPaddingBefore + mRadius;
-        float longOffset = longPaddingBefore + mRadius;
+        float verticalOffset = paddingTop + ((getHeight() - paddingTop - getPaddingBottom()) / 2.0f);
+        float horizontalOffset = paddingLeft;
         if (mCentered) {
-            final float circleSize = mRadius * 2;
-            final float width = count * circleSize + ((count - 1) * mExtraSpacing);
-            longOffset += ((longSize - longPaddingBefore - longPaddingAfter) / 2.0f) - (width / 2.0f);
-        }
-
-        float dX;
-        float dY;
-
-        float pageFillRadius = mRadius;
-        if (mPaintStroke.getStrokeWidth() > 0) {
-            pageFillRadius -= mPaintStroke.getStrokeWidth() / 2.0f;
+            horizontalOffset += ((getWidth() - paddingLeft - paddingRight) / 2.0f) - (indicatorWidth / 2.0f);
         }
 
         //Draw stroked circles
-        for (int iLoop = 0; iLoop < count; iLoop++) {
-            float drawLong = longOffset + (iLoop * threeRadius);
-            if (mOrientation == HORIZONTAL) {
-                dX = drawLong;
-                dY = shortOffset;
-            } else {
-                dX = shortOffset;
-                dY = drawLong;
-            }
-            // Only paint fill if not completely transparent
-            if (mPaintPageFill.getAlpha() > 0) {
-                canvas.drawCircle(dX, dY, pageFillRadius, mPaintPageFill);
-            }
-
-            // Only paint stroke if a stroke width was non-zero
-            if (pageFillRadius != mRadius) {
-                canvas.drawCircle(dX, dY, mRadius, mPaintStroke);
-            }
+        for (int i = 0; i < count; i++) {
+            float dx1 = horizontalOffset + (i * lineWidthAndGap);
+            float dx2 = dx1 + mLineWidth;
+            canvas.drawLine(dx1, verticalOffset, dx2, verticalOffset, (i == mCurrentPage) ? mPaintSelected : mPaintUnselected);
         }
-
-        //Draw the filled circle according to the current scroll
-        float cx = (mSnap ? mSnapPage : mCurrentPage) * threeRadius;
-        if (!mSnap) {
-            cx += mPageOffset * threeRadius;
-        }
-        if (mOrientation == HORIZONTAL) {
-            dX = longOffset + cx;
-            dY = shortOffset;
-        } else {
-            dX = shortOffset;
-            dY = longOffset + cx;
-        }
-        canvas.drawCircle(dX, dY, mRadius, mPaintFill);
     }
 
     public boolean onTouchEvent(MotionEvent ev) {
         if (super.onTouchEvent(ev)) {
             return true;
         }
-        if (mViewPager == null || getRealCount() == 0) {
+        if ((mViewPager == null) || (getRealCount() == 0)) {
             return false;
         }
 
@@ -368,17 +274,18 @@ public class LoopingCirclePageIndicator extends View implements PageIndicator {
     }
 
     @Override
-    public void setViewPager(ViewPager view) {
-        if (mViewPager == view) {
+    public void setViewPager(ViewPager viewPager) {
+        if (mViewPager == viewPager) {
             return;
         }
         if (mViewPager != null) {
+            //Clear us from the old pager.
             mViewPager.setOnPageChangeListener(null);
         }
-        if (view.getAdapter() == null) {
+        if (viewPager.getAdapter() == null) {
             throw new IllegalStateException("ViewPager does not have adapter instance.");
         }
-        mViewPager = view;
+        mViewPager = viewPager;
         mViewPager.setOnPageChangeListener(this);
         invalidate();
     }
@@ -406,8 +313,6 @@ public class LoopingCirclePageIndicator extends View implements PageIndicator {
 
     @Override
     public void onPageScrollStateChanged(int state) {
-        mScrollState = state;
-
         if (mListener != null) {
             mListener.onPageScrollStateChanged(state);
         }
@@ -415,10 +320,6 @@ public class LoopingCirclePageIndicator extends View implements PageIndicator {
 
     @Override
     public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-        mCurrentPage = getRealPage(position);
-        mPageOffset = positionOffset;
-        invalidate();
-
         if (mListener != null) {
             mListener.onPageScrolled(position, positionOffset, positionOffsetPixels);
         }
@@ -426,11 +327,8 @@ public class LoopingCirclePageIndicator extends View implements PageIndicator {
 
     @Override
     public void onPageSelected(int position) {
-        if (mSnap || mScrollState == ViewPager.SCROLL_STATE_IDLE) {
-            mCurrentPage = getRealPage(position);
-            mSnapPage = getRealPage(position);
-            invalidate();
-        }
+        mCurrentPage = getRealPage(position);
+        invalidate();
 
         if (mListener != null) {
             mListener.onPageSelected(position);
@@ -442,28 +340,20 @@ public class LoopingCirclePageIndicator extends View implements PageIndicator {
         mListener = listener;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see android.view.View#onMeasure(int, int)
-     */
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        if (mOrientation == HORIZONTAL) {
-            setMeasuredDimension(measureLong(widthMeasureSpec), measureShort(heightMeasureSpec));
-        } else {
-            setMeasuredDimension(measureShort(widthMeasureSpec), measureLong(heightMeasureSpec));
-        }
+        setMeasuredDimension(measureWidth(widthMeasureSpec), measureHeight(heightMeasureSpec));
     }
 
     /**
      * Determines the width of this view
      *
-     * @param measureSpec A measureSpec packed into an int
+     * @param measureSpec
+     *            A measureSpec packed into an int
      * @return The width of the view, honoring constraints from measureSpec
      */
-    private int measureLong(int measureSpec) {
-        int result;
+    private int measureWidth(int measureSpec) {
+        float result;
         int specMode = MeasureSpec.getMode(measureSpec);
         int specSize = MeasureSpec.getSize(measureSpec);
 
@@ -473,24 +363,24 @@ public class LoopingCirclePageIndicator extends View implements PageIndicator {
         } else {
             //Calculate the width according the views count
             final int count = getRealCount();
-            result = (int) (getPaddingLeft() + getPaddingRight()
-                    + (count * 2 * mRadius) + (count - 1) * (mRadius + mExtraSpacing) + 1);
+            result = getPaddingLeft() + getPaddingRight() + (count * mLineWidth) + ((count - 1) * mGapWidth);
             //Respect AT_MOST value if that was what is called for by measureSpec
             if (specMode == MeasureSpec.AT_MOST) {
                 result = Math.min(result, specSize);
             }
         }
-        return result;
+        return (int)FloatMath.ceil(result);
     }
 
     /**
      * Determines the height of this view
      *
-     * @param measureSpec A measureSpec packed into an int
+     * @param measureSpec
+     *            A measureSpec packed into an int
      * @return The height of the view, honoring constraints from measureSpec
      */
-    private int measureShort(int measureSpec) {
-        int result;
+    private int measureHeight(int measureSpec) {
+        float result;
         int specMode = MeasureSpec.getMode(measureSpec);
         int specSize = MeasureSpec.getSize(measureSpec);
 
@@ -499,21 +389,20 @@ public class LoopingCirclePageIndicator extends View implements PageIndicator {
             result = specSize;
         } else {
             //Measure the height
-            result = (int) (2 * mRadius + getPaddingTop() + getPaddingBottom() + 1);
+            result = mPaintSelected.getStrokeWidth() + getPaddingTop() + getPaddingBottom();
             //Respect AT_MOST value if that was what is called for by measureSpec
             if (specMode == MeasureSpec.AT_MOST) {
                 result = Math.min(result, specSize);
             }
         }
-        return result;
+        return (int)FloatMath.ceil(result);
     }
 
     @Override
     public void onRestoreInstanceState(Parcelable state) {
-        SavedState savedState = (SavedState) state;
+        SavedState savedState = (SavedState)state;
         super.onRestoreInstanceState(savedState.getSuperState());
         mCurrentPage = getRealPage(savedState.currentPage);
-        mSnapPage = getRealPage(savedState.currentPage);
         requestLayout();
     }
 
