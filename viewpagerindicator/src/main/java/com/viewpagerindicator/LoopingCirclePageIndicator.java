@@ -558,7 +558,11 @@ public class LoopingCirclePageIndicator extends View implements PageIndicator {
     }
 
     public int getRealCount() {
-        return ((LoopingPagerAdapter) mViewPager.getAdapter()).getRealCount();
+        if (mViewPager.getAdapter() instanceof LoopingPagerAdapter) {
+            return ((LoopingPagerAdapter) mViewPager.getAdapter()).getRealCount();
+        } else {
+            return mViewPager.getAdapter().getCount();
+        }
     }
 
     public int getRealPage(int page) {
