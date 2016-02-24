@@ -19,6 +19,7 @@ public class ThirdApproachActivity extends AppCompatActivity {
     ViewPager mPager;
     ViewGroup mFrameLayout;
     CustomPagerAdapterAdapter2 mAdapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -32,9 +33,16 @@ public class ThirdApproachActivity extends AppCompatActivity {
         fragments.add(ContentFragment.newInstance("~~~~"));
         mAdapter = new CustomPagerAdapterAdapter2(getSupportFragmentManager(), fragments);
         mPager.setAdapter(mAdapter);
-        //this puts the initial page in the middle of the ViewPager
-        //So that we can scroll in both directions.
-        mPager.setCurrentItem(fragments.size());
+
+        //This put the initial page as close of 1000 as it can
+        //So the user can scroll in both directions
+        //Without reaching position 0 easily
+        //giving him the sensation that he is interacting with an infinite viewpager
+        //(It was hard to reach final position,
+        //but so easy to reach position 0
+        //so this fix this issue)
+        mPager.setCurrentItem(1000 - (1000 % fragments.size()));
+
         LoopingCirclePageIndicator circlePageIndicator = new LoopingCirclePageIndicator(this);
         circlePageIndicator.setViewPager(mPager);
         mFrameLayout.addView(circlePageIndicator);
@@ -45,6 +53,7 @@ public class ThirdApproachActivity extends AppCompatActivity {
     static class CustomPagerAdapterAdapter2 extends FragmentStatePagerAdapter implements LoopingPagerAdapter {
 
         List<Fragment> mFrags = new ArrayList<>();
+
         public CustomPagerAdapterAdapter2(FragmentManager fm, List<Fragment> frags) {
             super(fm);
             mFrags = frags;
@@ -52,7 +61,7 @@ public class ThirdApproachActivity extends AppCompatActivity {
 
         @Override
         public Fragment getItem(int position) {
-            int index = position%mFrags.size();
+            int index = position % mFrags.size();
             return mFrags.get(index);
         }
 
